@@ -116,15 +116,19 @@
   <script>
     const players = [];
     let currentRound = 1;
+    let maxRounds = 0;
     let playerBets = [];
     let playerWins = [];
     let playerScores = [];
+    let roundOrder = [];
 
     // Step 1: Handle number of players selection
     document.getElementById('player-form').addEventListener('submit', function (event) {
       event.preventDefault();
       const playerCount = parseInt(document.getElementById('player-count').value, 10);
       const playerNamesDiv = document.getElementById('player-names');
+
+      maxRounds = Math.floor(60 / playerCount); // Assuming a 60-card deck
 
       playerNamesDiv.innerHTML = ''; // Clear any existing inputs
 
@@ -149,6 +153,7 @@
       const playerNames = Array.from(document.querySelectorAll('#name-entry input')).map(input => input.value);
       players.push(...playerNames);
 
+      roundOrder = [...players]; // Initialize round order
       playerScores = Array(players.length).fill(0);
 
       initializeScoreTable();
@@ -161,9 +166,20 @@
       const headerRow = scoresTable.querySelector('thead tr');
       headerRow.innerHTML = `<th>Player</th>`;
 
+      for (let i = 1; i <= maxRounds; i++) {
+        const roundHeader = document.createElement('th');
+        roundHeader.textContent = `R${i}`;
+        headerRow.appendChild(roundHeader);
+      }
+
       players.forEach(player => {
         const row = document.createElement('tr');
         row.innerHTML = `<td>${player}</td>`;
+        for (let i = 1; i <= maxRounds; i++) {
+          const cell = document.createElement('td');
+          cell.textContent = "-"; // Placeholder for scores
+          row.appendChild(cell);
+        }
         document.getElementById('scores-body').appendChild(row);
       });
     }
@@ -175,7 +191,7 @@
 
       document.getElementById('round-number').textContent = currentRound;
 
-      players.forEach((player, index) => {
+      roundOrder.forEach((player, index) => {
         const playerBetDiv = document.createElement('div');
         playerBetDiv.classList.add('player-bet-box');
 
@@ -215,7 +231,7 @@
       playerBets = [];
       let allBetsEntered = true;
 
-      players.forEach((player, index) => {
+      roundOrder.forEach((player, index) => {
         const selectedBox = document.querySelector(`.bet-box[data-player="${index}"].selected`);
         if (selectedBox) {
           playerBets.push({ player, bet: parseInt(selectedBox.dataset.bet, 10) });
@@ -235,7 +251,7 @@
 
       document.getElementById('record-wins-round-number').textContent = currentRound;
 
-      players.forEach((player, index) => {
+      roundOrder.forEach((player, index) => {
         const playerWinDiv = document.createElement('div');
         playerWinDiv.classList.add('player-bet-box');
 
@@ -275,7 +291,7 @@
       playerWins = [];
       let allWinsEntered = true;
 
-      players.forEach((player, index) => {
+      roundOrder.forEach((player, index) => {
         const selectedBox = document.querySelector(`.bet-box[data-player="${index}"].selected`);
         if (selectedBox) {
           playerWins.push({ player, win: parseInt(selectedBox.dataset.win, 10) });
@@ -293,13 +309,9 @@
       const scoresTable = document.getElementById('scores-table');
       const headerRow = scoresTable.querySelector('thead tr');
 
-      const roundHeader = document.createElement('th');
-      roundHeader.textContent = `Round ${currentRound}`;
-      headerRow.appendChild(roundHeader);
-
       players.forEach((player, index) => {
-        const bet = playerBets[index].bet;
-        const win = playerWins[index].win;
+        const bet = playerBets.find(b => b.player === player).bet;
+        const win = playerWins.find(w => w.player === player).win;
 
         let roundScore = 0;
 
@@ -312,20 +324,30 @@
         playerScores[index] += roundScore;
 
         const row = document.querySelectorAll('#scores-body tr')[index];
-        const scoreCell = document.createElement('td');
+        const scoreCell = row.children[currentRound];
         scoreCell.textContent = playerScores[index];
-        row.appendChild(scoreCell);
       });
+
+      rotateOrder();
 
       document.getElementById('record-wins').style.display = 'none';
       document.getElementById('round-scores').style.display = 'block';
     }
 
+    // Rotate the player order for the next round
+    function rotateOrder() {
+      roundOrder.push(roundOrder.shift());
+    }
+
     // Step 8: Prepare for the next round
     document.getElementById('next-round').addEventListener('click', function () {
       currentRound++;
-      setupRound();
-      document.getElementById('round-scores').style.display = 'none';
+      if (currentRound <= maxRounds) {
+        setupRound();
+        document.getElementById('round-scores').style.display = 'none';
+      } else {
+        alert('Game Over!');
+      }
     });
   </script>
 </body>

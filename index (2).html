@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wizard Scorekeeper</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin-top: 50px;
+    }
+    .player-bet-box {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      margin: 10px 0;
+    }
+    .player-name {
+      width: 150px;
+      text-align: left;
+      font-weight: bold;
+    }
+    .bet-grid {
+      display: flex;
+      gap: 5px;
+    }
+    .bet-box {
+      width: 40px;
+      height: 40px;
+      display: inline-block;
+      background-color: lightgray;
+      text-align: center;
+      line-height: 40px;
+      cursor: pointer;
+      border: 1px solid #ddd;
+    }
+    .bet-box.selected {
+      background-color: green;
+      color: white;
+      border: 1px solid darkgreen;
+    }
+    table {
+      margin: 20px auto;
+      border-collapse: collapse;
+      width: 80%;
+    }
+    table, th, td {
+      border: 1px solid black;
+    }
+    th, td {
+      padding: 10px;
+      text-align: center;
+    }
+    th {
+      background-color: lightblue;
+    }
+  </style>
+</head>
+<body>
+  <h1>Wizard Scorekeeper</h1>
+
+  <!-- Step 1: Choose number of players -->
+  <form id="player-form">
+    <label for="player-count">How many players?</label>
+    <select id="player-count" name="player-count" required>
+      <option value="3">3 Players</option>
+      <option value="4">4 Players</option>
+      <option value="5">5 Players</option>
+      <option value="6">6 Players</option>
+      <option value="7">7 Players</option>
+      <option value="8">8 Players</option>
+      <option value="9">9 Players</option>
+      <option value="10">10 Players</option>
+    </select>
+    <button type="submit">Next</button>
+  </form>
+
+  <!-- Step 2: Enter player names -->
+  <div id="name-entry" style="display: none;">
+    <h2>Enter Player Names</h2>
+    <form id="name-form">
+      <div id="player-names"></div>
+      <button type="submit">Start Game</button>
+    </form>
+  </div>
+
+  <!-- Step 3: Round Setup -->
+  <div id="round-setup" style="display: none;">
+    <h2>Round <span id="round-number">1</span>: Bets</h2>
+    <div id="player-bets"></div>
+    <button id="submit-bets">Submit Bets</button>
+  </div>
+
+  <!-- Step 4: Record Wins -->
+  <div id="record-wins" style="display: none;">
+    <h2>Round <span id="record-wins-round-number">1</span>: Record Wins</h2>
+    <div id="player-wins"></div>
+    <button id="submit-wins">Submit Wins</button>
+  </div>
+
+  <!-- Step 5: Round Scores -->
+  <div id="round-scores" style="display: none;">
+    <h2>Scores Table</h2>
+    <table id="scores-table">
+      <thead>
+        <tr>
+          <th>Player</th>
+        </tr>
+      </thead>
+      <tbody id="scores-body"></tbody>
+    </table>
+    <button id="next-round">Next Round</button>
+  </div>
+
+  <script>
+    const players = [];
+    let currentRound = 1;
+    let playerBets = [];
+    let playerWins = [];
+    let playerScores = [];
+
+    // Step 1: Handle number of players selection
+    document.getElementById('player-form').addEventListener('submit', function (event) {
+      event.preventDefault();
+      const playerCount = parseInt(document.getElementById('player-count').value, 10);
+      const playerNamesDiv = document.getElementById('player-names');
+
+      playerNamesDiv.innerHTML = ''; // Clear any existing inputs
+
+      for (let i = 1; i <= playerCount; i++) {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.name = `player-${i}`;
+        input.placeholder = `Player ${i} Name`;
+        input.required = true;
+        playerNamesDiv.appendChild(input);
+      }
+
+      document.getElementById('player-form').style.display = 'none';
+      document.getElementById('name-entry').style.display = 'block';
+    });
+
+    // Step 2: Handle player name submission
+    document.getElementById('name-form').addEventListener('submit', function (event) {
+      event.preventDefault();
+      players.length = 0;
+
+      const playerNames = Array.from(document.querySelectorAll('#name-entry input')).map(input => input.value);
+      players.push(...playerNames);
+
+      playerScores = Array(players.length).fill(0);
+
+      initializeScoreTable();
+      setupRound();
+    });
+
+    // Initialize the score table
+    function initializeScoreTable() {
+      const scoresTable = document.getElementById('scores-table');
+      const headerRow = scoresTable.querySelector('thead tr');
+      headerRow.innerHTML = `<th>Player</th>`;
+
+      players.forEach(player => {
+        const row = document.createElement('tr');
+        row.innerHTML = `<td>${player}</td>`;
+        document.getElementById('scores-body').appendChild(row);
+      });
+    }
+
+    // Step 3: Set up the round
+    function setupRound() {
+      const playerBetsDiv = document.getElementById('player-bets');
+      playerBetsDiv.innerHTML = '';
+
+      document.getElementById('round-number').textContent = currentRound;
+
+      players.forEach((player, index) => {
+        const playerBetDiv = document.createElement('div');
+        playerBetDiv.classList.add('player-bet-box');
+
+        const playerLabel = document.createElement('div');
+        playerLabel.classList.add('player-name');
+        playerLabel.textContent = player;
+        playerBetDiv.appendChild(playerLabel);
+
+        const betGrid = document.createElement('div');
+        betGrid.classList.add('bet-grid');
+
+        for (let i = 0; i <= currentRound; i++) {
+          const betBox = document.createElement('div');
+          betBox.classList.add('bet-box');
+          betBox.textContent = i;
+          betBox.dataset.player = index;
+          betBox.dataset.bet = i;
+
+          betBox.addEventListener('click', function () {
+            document.querySelectorAll(`.bet-box[data-player="${index}"]`).forEach(box => box.classList.remove('selected'));
+            this.classList.add('selected');
+          });
+
+          betGrid.appendChild(betBox);
+        }
+
+        playerBetDiv.appendChild(betGrid);
+        playerBetsDiv.appendChild(playerBetDiv);
+      });
+
+      document.getElementById('name-entry').style.display = 'none';
+      document.getElementById('round-setup').style.display = 'block';
+    }
+
+    // Step 4: Handle bets submission
+    document.getElementById('submit-bets').addEventListener('click', function () {
+      playerBets = [];
+      let allBetsEntered = true;
+
+      players.forEach((player, index) => {
+        const selectedBox = document.querySelector(`.bet-box[data-player="${index}"].selected`);
+        if (selectedBox) {
+          playerBets.push({ player, bet: parseInt(selectedBox.dataset.bet, 10) });
+        } else {
+          allBetsEntered = false;
+          alert(`Please select a bet for ${player}`);
+        }
+      });
+
+      if (allBetsEntered) setupWins();
+    });
+
+    // Step 5: Set up wins recording
+    function setupWins() {
+      const playerWinsDiv = document.getElementById('player-wins');
+      playerWinsDiv.innerHTML = '';
+
+      document.getElementById('record-wins-round-number').textContent = currentRound;
+
+      players.forEach((player, index) => {
+        const playerWinDiv = document.createElement('div');
+        playerWinDiv.classList.add('player-bet-box');
+
+        const playerLabel = document.createElement('div');
+        playerLabel.classList.add('player-name');
+        playerLabel.textContent = player;
+        playerWinDiv.appendChild(playerLabel);
+
+        const winGrid = document.createElement('div');
+        winGrid.classList.add('bet-grid');
+
+        for (let i = 0; i <= currentRound; i++) {
+          const winBox = document.createElement('div');
+          winBox.classList.add('bet-box');
+          winBox.textContent = i;
+          winBox.dataset.player = index;
+          winBox.dataset.win = i;
+
+          winBox.addEventListener('click', function () {
+            document.querySelectorAll(`.bet-box[data-player="${index}"]`).forEach(box => box.classList.remove('selected'));
+            this.classList.add('selected');
+          });
+
+          winGrid.appendChild(winBox);
+        }
+
+        playerWinDiv.appendChild(winGrid);
+        playerWinsDiv.appendChild(playerWinDiv);
+      });
+
+      document.getElementById('round-setup').style.display = 'none';
+      document.getElementById('record-wins').style.display = 'block';
+    }
+
+    // Step 6: Handle wins submission
+    document.getElementById('submit-wins').addEventListener('click', function () {
+      playerWins = [];
+      let allWinsEntered = true;
+
+      players.forEach((player, index) => {
+        const selectedBox = document.querySelector(`.bet-box[data-player="${index}"].selected`);
+        if (selectedBox) {
+          playerWins.push({ player, win: parseInt(selectedBox.dataset.win, 10) });
+        } else {
+          allWinsEntered = false;
+          alert(`Please select wins for ${player}`);
+        }
+      });
+
+      if (allWinsEntered) calculateScores();
+    });
+
+    // Step 7: Calculate scores and update table
+    function calculateScores() {
+      const scoresTable = document.getElementById('scores-table');
+      const headerRow = scoresTable.querySelector('thead tr');
+
+      const roundHeader = document.createElement('th');
+      roundHeader.textContent = `Round ${currentRound}`;
+      headerRow.appendChild(roundHeader);
+
+      players.forEach((player, index) => {
+        const bet = playerBets[index].bet;
+        const win = playerWins[index].win;
+
+        let roundScore = 0;
+
+        if (bet === win) {
+          roundScore = 20 + bet * 10;
+        } else {
+          roundScore = -Math.abs(bet - win) * 10;
+        }
+
+        playerScores[index] += roundScore;
+
+        const row = document.querySelectorAll('#scores-body tr')[index];
+        const scoreCell = document.createElement('td');
+        scoreCell.textContent = playerScores[index];
+        row.appendChild(scoreCell);
+      });
+
+      document.getElementById('record-wins').style.display = 'none';
+      document.getElementById('round-scores').style.display = 'block';
+    }
+
+    // Step 8: Prepare for the next round
+    document.getElementById('next-round').addEventListener('click', function () {
+      currentRound++;
+      setupRound();
+      document.getElementById('round-scores').style.display = 'none';
+    });
+  </script>
+</body>
+</html>
